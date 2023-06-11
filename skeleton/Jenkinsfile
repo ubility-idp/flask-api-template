@@ -1,0 +1,47 @@
+pipeline {
+    agent any
+    environment {
+        AZURE_TENANT_ID='${{ values.azure_tenant_id }}'
+        CONTAINER_REGISTRY='${{ values.container_registry }}'
+        RESOURCE_GROUP='${{ values.resource_group }}'
+        CLUSTER_NAME='${{ values.cluster_name.split('/')[1] | lower }}'
+        IMAGE_NAME='${{ values.entity_name | lower | replace(' ','-') }}'
+    }
+    parameters {
+        gitParameter name: 'REVISION',
+                     type: 'PT_REVISION',
+                     defaultValue: 'master'
+    }
+    stages{
+        stage('Get the revision to download') {
+            steps {
+                checkout([$class: 'GitSCM',
+                          branches: [[name: "${params.REVISION}"]],
+                          doGenerateSubmoduleConfigurations: false,
+                          extensions: [],
+                          gitTool: 'Default',
+                          submoduleCfg: [],
+                          userRemoteConfigs: [[credentialsId: '${{ values.repo_owner }}-githubssh', url: 'git@github.com:${{ values.repo_owner }}/${{ values.repo_location | replace(' ','-')  }}.git']]
+                        ])
+            }
+        }
+        stage ('login to azure and build the image and push to acr') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'azure', passwordVariable: 'AZURE_CLIENT_SECRET', usernameVariable: 'AZURE_CLIENT_ID')]) {
+                    sh 'az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET -t $AZURE_TENANT_ID'
+                    sh 'az acr login --name $CONTAINER_REGISTRY --resource-group $RESOURCE_GROUP'
+                    sh 'az acr build --image $IMAGE_NAME:V$BUILD_NUMBER --registry $CONTAINER_REGISTRY --file Dockerfile . '
+                }
+            }
+        }
+        stage('Deploy the Artifact on Kubernetes') {
+            steps {
+                sh 'az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME'
+                sh 'originalfile="manifests/deployment.yaml";tmpfile=$(mktemp);cp --attributes-only --preserve $originalfile $tmpfile;export BUILD_NUMBER="$BUILD_NUMBER";echo "[INFO] Build Number $BUILD_NUMBER are deploying now"; cat $originalfile | envsubst > $tmpfile && mv $tmpfile $originalfile'
+                sh 'kubectl delete -R -f manifests --ignore-not-found=true'
+                sh 'sleep 30s'
+                sh 'kubectl apply -R -f manifests'
+            }
+		}
+    }
+}

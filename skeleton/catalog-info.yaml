@@ -1,0 +1,16 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.entity_name | replace(' ','-') }}
+  description: ${{ values.description }}
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+    jenkins.io/job-full-name: ${{ values.entity_name }}
+    backstage.io/kubernetes-id: ${{ values.entity_name | lower | replace(' ','-') }}
+    ubilityai.com/svc: public
+    ubilityai.com/cluster-name: ${{ values.cluster_name.split('/')[1] | lower }}
+    ubilityai.com/deleted: no
+spec:
+  type: service
+  lifecycle: development
+  owner: ${{ values.entity_owner }}

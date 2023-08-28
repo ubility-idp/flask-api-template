@@ -42,6 +42,6 @@ pipeline {
                 sh 'sleep 30s'
                 sh 'kubectl apply -R -f manifests'
             }
-		}
+        }
     }
 }

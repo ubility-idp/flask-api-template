@@ -16,6 +16,6 @@ spec:
     spec:
       containers:
         - name: ${{ values.entity_name | lower | replace(' ','-')  }}
-          image: ${{ values.container_registry }}/${{ values.entity_name | lower | replace(' ','-')}}:V$BUILD_NUMBER
+          image: ${{ values.container_registry }}/${{ values.entity_name | lower | replace(' ','-')}}.azurecr.io:V$BUILD_NUMBER
           ports:
             - containerPort: 5000

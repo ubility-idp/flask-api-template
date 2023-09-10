@@ -14,3 +14,30 @@ spec:
   type: service
   lifecycle: development
   owner: ${{ values.entity_owner }}
+  subcomponentOf: ${{ values.cluster_name.split('/')[1] | lower }}
+  providesApis: [${{ values.entity_name | replace(' ','-') }}-hello_world]
+---
+
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: ${{ values.entity_name | replace(' ','-') }}-hello_world
+  description: Return hello world
+spec:
+  type: openapi
+  lifecycle: production
+  owner: ${{ values.entity_owner }}
+  system: test
+  definition: |
+    openapi: "3.0.0"
+    info:
+      version: 1.0.0
+      title: Hello World
+      license:
+        name: MIT
+    servers:
+      - url: http://${{ values.domain }}
+    paths:
+      ${{ values.path }}:
+        get:
+          summary: Returns Hello World
